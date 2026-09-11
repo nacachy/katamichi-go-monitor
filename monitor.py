@@ -68,42 +68,33 @@ def fetch_listings():
     soup = BeautifulSoup(response.text, "html.parser")
 
     text = soup.get_text("\n", strip=True)
+
     lines = [
         normalize(line)
         for line in text.splitlines()
         if normalize(line)
     ]
 
-    labels = {
-        "出発店舗",
-        "返却店舗",
-        "出発期間",
-        "さらに詳細をみる",
-        "詳細を閉じる",
-        "車種",
-        "車両条件",
-        "予約電話番号",
-        "出発",
-        "到着",
-        "店舗",
-    }
-
     listings = []
 
-    for i, line in enumerate(lines):
+    # 「出発」「店舗」が連続する場所を各車両の開始地点として取得
+    start_indexes = []
 
-        if line != "出発店舗":
-            continue
+    for i in range(len(lines) - 1):
+        if lines[i] == "出発" and lines[i + 1] == "店舗":
+            start_indexes.append(i)
 
-        # 次の「出発店舗」までを1件の候補として扱う
-        end = len(lines)
+    print(f"出発店舗候補：{len(start_indexes)}件")
 
-        for j in range(i + 1, len(lines)):
-            if lines[j] == "出発店舗":
-                end = j
-                break
+    for n, start in enumerate(start_indexes):
 
-        block = lines[i:end]
+        # 次の「出発・店舗」までを1件とする
+        if n + 1 < len(start_indexes):
+            end = start_indexes[n + 1]
+        else:
+            end = len(lines)
+
+        block = lines[start:end]
 
         departure = ""
         return_store = ""
@@ -113,56 +104,51 @@ def fetch_listings():
         phone = ""
 
         # 出発店舗
-        try:
-            idx = block.index("出発店舗")
-            departure = get_value(block, idx, labels)
-        except ValueError:
-            pass
+        if len(block) >= 3:
+            departure = block[2]
 
         # 返却店舗
-        try:
-            idx = block.index("返却店舗")
-            return_store = get_value(block, idx, labels)
-        except ValueError:
-            pass
+        for i in range(len(block) - 1):
+            if block[i] == "返却" and block[i + 1] == "店舗":
+                if i + 2 < len(block):
+                    return_store = block[i + 2]
+                break
 
         # 出発期間
-        try:
-            idx = block.index("出発期間")
-
-            for k in range(idx + 1, min(idx + 5, len(block))):
-                if re.search(r"\d{4}年\d+月\d+日", block[k]):
-                    period = block[k]
+        for i, line in enumerate(block):
+            if line == "出発期間":
+                for j in range(i + 1, min(i + 6, len(block))):
+                    if re.search(r"\d{4}年\d+月\d+日", block[j]):
+                        period = block[j]
+                        break
+                if period:
                     break
-        except ValueError:
-            pass
 
         # 車種
-        try:
-            idx = block.index("車種")
-            vehicle = get_value(block, idx, labels)
-        except ValueError:
-            pass
+        for i, line in enumerate(block):
+            if line == "車種":
+                if i + 1 < len(block):
+                    vehicle = block[i + 1]
+                break
 
         # 車両条件
-        try:
-            idx = block.index("車両条件")
-            condition = get_value(block, idx, labels)
-        except ValueError:
-            pass
+        for i, line in enumerate(block):
+            if line == "車両条件":
+                if i + 1 < len(block):
+                    condition = block[i + 1]
+                break
 
-        # 電話番号
-        try:
-            idx = block.index("予約電話番号")
-
-            for k in range(idx + 1, min(idx + 6, len(block))):
-                if re.search(r"\d{2,4}-\d{2,4}-\d{3,4}", block[k]):
-                    phone = block[k]
+        # 予約電話番号
+        for i, line in enumerate(block):
+            if line == "予約電話番号":
+                for j in range(i + 1, min(i + 8, len(block))):
+                    if re.search(r"\d{2,4}-\d{2,4}-\d{3,4}", block[j]):
+                        phone = block[j]
+                        break
+                if phone:
                     break
-        except ValueError:
-            pass
 
-        # 車両情報が取れていないものは除外
+        # 必須情報が揃っていない場合は除外
         if not departure or not vehicle or not period:
             continue
 
@@ -179,15 +165,16 @@ def fetch_listings():
 
         listings.append(item)
 
-    # 同じ車両情報がページ内に複数回存在する場合は1件にまとめる
+    # 重複除去
     unique = {}
 
     for item in listings:
         unique[item["key"]] = item
 
+    print(f"有効な車両情報：{len(unique)}件")
+
     return list(unique.values())
-
-
+    
 def load_state():
     """過去の通知済み車両を読み込む"""
 
