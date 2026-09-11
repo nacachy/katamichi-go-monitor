@@ -115,14 +115,14 @@ def fetch_listings():
         # 出発店舗
         try:
             idx = block.index("出発店舗")
-            departure = get_value(idx, 0, labels)
+            departure = get_value(block, idx, labels)
         except ValueError:
             pass
 
         # 返却店舗
         try:
             idx = block.index("返却店舗")
-            return_store = get_value(idx, 0, labels)
+            return_store = get_value(block, idx, labels)
         except ValueError:
             pass
 
@@ -140,14 +140,14 @@ def fetch_listings():
         # 車種
         try:
             idx = block.index("車種")
-            vehicle = get_value(idx, 0, labels)
+            vehicle = get_value(block, idx, labels)
         except ValueError:
             pass
 
         # 車両条件
         try:
             idx = block.index("車両条件")
-            condition = get_value(idx, 0, labels)
+            condition = get_value(block, idx, labels)
         except ValueError:
             pass
 
