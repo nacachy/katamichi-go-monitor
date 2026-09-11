@@ -1,23 +1,47 @@
-name: 片道GO取得テスト
+name: Katamichi GO Monitor
 
 on:
+  schedule:
+    - cron: '2-59/5 * * * *'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
+concurrency:
+  group: katamichi-go-monitor
+  cancel-in-progress: false
+
 jobs:
-  test:
+  monitor:
     runs-on: ubuntu-latest
+    timeout-minutes: 4
 
     steps:
-      - name: リポジトリを取得
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Pythonをセットアップ
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
-      - name: 必要なライブラリをインストール
+      - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: 片道GOを取得
+      - name: Run monitor
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python monitor.py
+
+      - name: Save monitoring state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state.json
+          if git diff --cached --quiet; then
+            echo "No state changes"
+          else
+            git commit -m "Update monitoring state"
+            git push
+          fi
