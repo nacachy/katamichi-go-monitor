@@ -294,23 +294,10 @@ def main():
         print("state.json を保存しました。")
         return
 
-        # 指定した3社の出発店舗だけを通知対象にする
-    target_listings = [
-        item
-        for item in listings
-        if (
-            "トヨタモビリティサービス" in item["departure"]
-            or "トヨタS＆Dレンタシェア西東京" in item["departure"]
-            or "トヨタレンタリース神奈川" in item["departure"]
-        )
-    ]
-
-    print(f"通知対象（指定3社）：{len(target_listings)}件")
-
-    # 新規掲載だけ抽出
+           # 新規掲載だけ抽出
     new_items = [
         item
-        for item in target_listings
+        for item in listings
         if item["key"] not in notified_keys
     ]
 
